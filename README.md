@@ -555,12 +555,36 @@ If you encounter issues, logs are the first place to check.
         ```
      2. Choose one of the following methods to alter the `root` user:
         * **Option A: Root with NO password (Passwordless)**:
-          ```sql
-          ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';
-          FLUSH PRIVILEGES;
-          EXIT;
-          ```
+          If you encounter `ERROR 1819 (HY000): Your password does not satisfy the current policy requirements` (due to the password validation plugin being active), you must temporarily disable it to allow an empty password:
+          1. In the MySQL prompt, run the uninstall command for the validation tool:
+             * *For MySQL 8.0+ (Default component)*:
+               ```sql
+               UNINSTALL COMPONENT 'file://component_validate_password';
+               ```
+             * *For MySQL 5.7 / older versions (Plugin)*:
+               ```sql
+               UNINSTALL PLUGIN validate_password;
+               ```
+          2. Now, set the empty password successfully:
+             ```sql
+             ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';
+             FLUSH PRIVILEGES;
+             ```
+          3. *(Optional)* Re-enable the password validation tool if you plan on creating other users:
+             * *For MySQL 8.0+*:
+               ```sql
+               INSTALL COMPONENT 'file://component_validate_password';
+               ```
+             * *For MySQL 5.7*:
+               ```sql
+               INSTALL PLUGIN validate_password SONAME 'validate_password.so';
+               ```
+          4. Exit the MySQL prompt:
+             ```sql
+             EXIT;
+             ```
           *You can now connect without a password:* `mysql -u root`
+
         * **Option B: Root WITH a password**:
           ```sql
           ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your_secure_password';
