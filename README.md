@@ -11,6 +11,9 @@
 8. [Step 7: Verifying the Installation](#8-step-7-verifying-the-installation)
 9. [Step 8: File Permissions & Directory Structure](#9-step-8-file-permissions--directory-structure)
 10. [Troubleshooting & Log Locations](#10-step-9-troubleshooting--log-locations)
+    - [9.1 Log Locations](#91-log-locations)
+    - [9.2 Common Issues](#92-common-issues)
+      - [MySQL Access Denied for 'root'@'localhost'](#mysql-access-denied)
 
 ---
 
@@ -538,3 +541,48 @@ If you encounter issues, logs are the first place to check.
    - When using the NodeSource installation, running `npm install -g <package>` can fail with permission errors. You can resolve this by using `sudo npm install -g <package>`, or by using NVM (Option 2) which handles environments in user space and avoids `sudo` entirely.
 5. **Node.js Port already in use (EADDRINUSE)**:
    - If you see `Error: listen EADDRINUSE: address already in use :::3000`, check which process is holding the port: `sudo lsof -i :3000`. Stop the process, or select a different port for your server.
+6. <a id="mysql-access-denied"></a>**Access denied for user 'root'@'localhost' (MySQL Error)**:
+   - **Cause**: By default on Ubuntu, the MySQL `root` user is configured to authenticate using the `auth_socket` plugin. This means that you can only log in if you run the command with administrator privileges (`sudo`). Connecting as `root` from an application (e.g., PHP, Node.js) or running `mysql -u root -p` without `sudo` will fail with this error.
+   - **Solution 1 (Recommended)**: Create and use a dedicated non-root application user. Refer back to [Section 2.3: Creating a Dedicated Application Database & User](#23-creating-a-dedicated-application-database--user).
+   - **Solution 2 (Run MySQL CLI as Root)**: If you just need to access the MySQL shell, execute it using `sudo`:
+     ```bash
+     sudo mysql
+     ```
+   - **Solution 3 (Switch Root to Password or Passwordless Authentication)**: If your application *must* connect as `root` (not recommended for production), change the authentication method:
+     1. Log into the MySQL terminal:
+        ```bash
+        sudo mysql
+        ```
+     2. Choose one of the following methods to alter the `root` user:
+        * **Option A: Root with NO password (Passwordless)**:
+          ```sql
+          ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';
+          FLUSH PRIVILEGES;
+          EXIT;
+          ```
+          *You can now connect without a password:* `mysql -u root`
+        * **Option B: Root WITH a password**:
+          ```sql
+          ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your_secure_password';
+          FLUSH PRIVILEGES;
+          EXIT;
+          ```
+          *You can now connect with the password:* `mysql -u root -p`
+        * **Option C: Passwordless CLI using client configuration (`~/.my.cnf`)**:
+          If you want to connect to MySQL as `root` without typing credentials or using `sudo` every time, you can create a user-specific configuration file:
+          1. Create the configuration file in your home directory:
+             ```bash
+             nano ~/.my.cnf
+             ```
+          2. Add the following content:
+             ```ini
+             [client]
+             user=root
+             password=""
+             ```
+          3. Set secure permissions on the file (required by MySQL, otherwise it will be ignored):
+             ```bash
+             chmod 600 ~/.my.cnf
+             ```
+          *You can now connect by simply typing:* `mysql`
+
