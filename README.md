@@ -519,6 +519,30 @@ Ensure that the web server group (`www-data`) retains reading and execution perm
 sudo chmod -R 755 /var/www/html/
 ```
 
+#### 8.3 Using ACL (Access Control List) for Shared Permissions (Highly Recommended)
+This is the most modern and secure method. If you are developing a web application (like Laravel) where both your system user (`$USER` / `mohaddes`) and the web server user (`www-data`) need to write to the same files, using ACL ensures that newly created files/folders automatically inherit correct read-write permissions:
+
+1. Install the ACL tool if it is not already installed:
+   ```bash
+   sudo apt install acl -y
+   ```
+
+2. Give full folder access for `/var/www/html/` recursively to both the web server (`www-data`) and current user (`$USER`):
+   ```bash
+   # Set current permissions recursively
+   sudo setfacl -R -m u:www-data:rwx -m u:$USER:rwx /var/www/html/
+   # Set default permissions for future files/folders recursively
+   sudo setfacl -dR -m u:www-data:rwx -m u:$USER:rwx /var/www/html/
+   ```
+
+3. For Laravel projects specifically, ensure that the `storage` and `bootstrap/cache` directories are writable:
+   ```bash
+   # Set current permissions recursively
+   sudo setfacl -R -m u:www-data:rwx -m u:$USER:rwx storage bootstrap/cache
+   # Set default permissions for future files/folders recursively
+   sudo setfacl -dR -m u:www-data:rwx -m u:$USER:rwx storage bootstrap/cache
+   ```
+
 ---
 
 ### 10. Step 9: Troubleshooting & Log Locations
