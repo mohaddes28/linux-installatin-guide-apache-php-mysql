@@ -1,24 +1,26 @@
-# Comprehensive Guide: Installing and Configuring Apache, MySQL, and PHP (LAMP Stack) on Ubuntu
+# Comprehensive Guide: Installing and Configuring Apache, Nginx, MySQL, and PHP (LAMP & LEMP Stack) on Ubuntu
 
 ## Table of Contents
 1. [Introduction & Prerequisites](#1-introduction--prerequisites)
-2. [Step 1: Installing and Configuring Apache Web Server](#2-step-1-installing-and-configuring-apache-web-server)
-3. [Step 2: Installing and Configuring MySQL Server](#3-step-2-installing-and-configuring-mysql-server)
-4. [Step 3: Installing PHP and Extensions (Any Version 5.6 - 8.4)](#4-step-3-installing-php-and-extensions-any-version-56---84)
-5. [Step 4: Managing and Switching PHP Versions](#5-step-4-managing-and-switching-php-versions)
-6. [Step 5: Installing Composer (PHP Dependency Manager)](#6-step-5-installing-composer-php-dependency-manager)
-7. [Step 6: Installing Node.js and NPM](#7-step-6-installing-nodejs-and-npm)
-8. [Step 7: Verifying the Installation](#8-step-7-verifying-the-installation)
-9. [Step 8: File Permissions & Directory Structure](#9-step-8-file-permissions--directory-structure)
-10. [Troubleshooting & Log Locations](#10-step-9-troubleshooting--log-locations)
-    - [9.1 Log Locations](#91-log-locations)
-    - [9.2 Common Issues](#92-common-issues)
+2. [Step 1A: Installing and Configuring Apache Web Server](#2-step-1a-installing-and-configuring-apache-web-server)
+3. [Step 1B: Installing and Configuring Nginx Web Server](#3-step-1b-installing-and-configuring-nginx-web-server)
+4. [Step 2: Installing and Configuring MySQL Server](#4-step-2-installing-and-configuring-mysql-server)
+5. [Step 3: Installing PHP and Extensions (Any Version 5.6 - 8.4)](#5-step-3-installing-php-and-extensions-any-version-56---84)
+6. [Step 4: Managing and Switching PHP Versions](#6-step-4-managing-and-switching-php-versions)
+7. [Step 5: Installing Composer (PHP Dependency Manager)](#7-step-5-installing-composer-php-dependency-manager)
+8. [Step 6: Installing Node.js and NPM](#8-step-6-installing-nodejs-and-npm)
+9. [Step 7: Verifying the Installation](#9-step-7-verifying-the-installation)
+10. [Step 8: File Permissions & Directory Structure](#10-step-8-file-permissions--directory-structure)
+11. [Step 9: Troubleshooting & Log Locations](#11-step-9-troubleshooting--log-locations)
+    - [11.1 Log Locations](#111-log-locations)
+    - [11.2 Common Issues](#112-common-issues)
       - [MySQL Access Denied for 'root'@'localhost'](#mysql-access-denied)
+      - [Nginx Common Issues (502 Bad Gateway, 403 Forbidden, 404 Routing, Port Conflicts)](#nginx-common-issues)
 
 ---
 
 ### 1. Introduction & Prerequisites
-This guide provides a detailed walkthrough for setting up a full LAMP (Linux, Apache, MySQL, PHP) stack on an Ubuntu server. It covers multi-version PHP installation (PHP 7.4 and PHP 8.3) and instructions on how to switch between them for both command-line usage and the Apache web server.
+This guide provides a detailed walkthrough for setting up a full LAMP (Linux, Apache, MySQL, PHP) or LEMP (Linux, Nginx, MySQL, PHP) stack on an Ubuntu server. It covers multi-version PHP installation (PHP 7.4 and PHP 8.3) and instructions on how to switch between them for command-line usage, Apache, and Nginx (via PHP-FPM).
 
 **Requirements:**
 - A system running Ubuntu (20.04 LTS, 22.04 LTS, or 24.04 LTS).
@@ -27,7 +29,7 @@ This guide provides a detailed walkthrough for setting up a full LAMP (Linux, Ap
 
 ---
 
-### 2. Step 1: Installing and Configuring Apache Web Server
+### 2. Step 1A: Installing and Configuring Apache Web Server
 Apache 2 is a robust, production-grade web server. 
 
 #### 1.1 Update Package Lists
@@ -88,7 +90,131 @@ Use the following commands to check, start, stop, restart, or enable Apache to r
 
 ---
 
-### 3. Step 2: Installing and Configuring MySQL Server
+### 3. Step 1B: Installing and Configuring Nginx Web Server
+Nginx is a high-performance web server known for its low resource utilization, speed, and concurrency handling. It is widely preferred for modern PHP applications (like Laravel).
+
+#### 1.1 Install Nginx
+Install the Nginx web server:
+```bash
+sudo apt update
+sudo apt install nginx -y
+```
+
+#### 1.2 Configure Firewall (UFW)
+Like Apache, Nginx has pre-configured profiles for UFW:
+- **`Nginx HTTP`**: Opens port 80 (normal unencrypted web traffic).
+- **`Nginx HTTPS`**: Opens port 443 (HTTPS encrypted traffic).
+- **`Nginx Full`**: Opens both port 80 and port 443.
+
+Allow standard Nginx traffic:
+```bash
+sudo ufw allow 'Nginx Full'
+```
+
+Verify the firewall status:
+```bash
+sudo ufw status
+```
+
+#### 1.3 Managing the Nginx Service
+Use `systemctl` to check, start, stop, restart, or enable Nginx:
+* **Check status**:
+  ```bash
+  sudo systemctl status nginx
+  ```
+* **Start Nginx**:
+  ```bash
+  sudo systemctl start nginx
+  ```
+* **Stop Nginx**:
+  ```bash
+  sudo systemctl stop nginx
+  ```
+* **Restart Nginx** (hard restart, drops active connections):
+  ```bash
+  sudo systemctl restart nginx
+  ```
+* **Reload Nginx** (gracefully reloads configuration files without losing connections):
+  ```bash
+  sudo systemctl reload nginx
+  ```
+* **Enable Nginx to start at boot**:
+  ```bash
+  sudo systemctl enable nginx
+  ```
+
+#### 1.4 Virtual Host Configuration (Server Blocks)
+Nginx uses server blocks (comparable to Apache Virtual Hosts) to host multiple sites. By default, Nginx is configured to serve content from `/var/www/html` via the default server block `/etc/nginx/sites-available/default`.
+
+For a modern PHP application (e.g., Laravel), create a customized server block configuration file. Here is a highly optimized configuration template:
+
+1. Create a configuration file (replace `example.com` with your project domain or name):
+   ```bash
+   sudo nano /etc/nginx/sites-available/example.com
+   ```
+
+2. Add the following optimized configuration:
+   ```nginx
+   server {
+       listen 80;
+       listen [::]:80;
+       server_name example.com www.example.com;
+       
+       # Set the document root to your PHP application directory 
+       # (For Laravel, point to /var/www/html/example-project/public)
+       root /var/www/html;
+       
+       index index.php index.html index.htm;
+       
+       charset utf-8;
+       
+       # Modern framework routing: try to serve the request as a file/directory,
+       # if not found, pass to index.php with the query arguments
+       location / {
+           try_files $uri $uri/ /index.php?$query_string;
+       }
+       
+       # Turn off logging for common files to save disk I/O and clean up logs
+       location = /favicon.ico { access_log off; log_not_found off; }
+       location = /robots.txt  { access_log off; log_not_found off; }
+       
+       # Route 404 pages through index.php
+       error_page 404 /index.php;
+       
+       # Pass PHP scripts to FastCGI server (PHP-FPM)
+       location ~ \.php$ {
+           # Ensure the PHP-FPM socket path matches your installed PHP version:
+           fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+           fastcgi_index index.php;
+           fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+           include fastcgi_params;
+       }
+       
+       # Deny access to hidden files (e.g., .env, .git)
+       location ~ /\.(?!well-known).* {
+           deny all;
+       }
+   }
+   ```
+
+3. Enable the configuration by creating a symbolic link (symlink) to the `sites-enabled` directory:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/
+   ```
+
+4. Test Nginx for syntax errors:
+   ```bash
+   sudo nginx -t
+   ```
+
+5. If the syntax test is successful, reload Nginx to apply changes:
+   ```bash
+   sudo systemctl reload nginx
+   ```
+
+---
+
+### 4. Step 2: Installing and Configuring MySQL Server
 MySQL is a relational database management system. 
 
 #### 2.1 Install MySQL
@@ -137,8 +263,14 @@ Avoid using the root account for daily application databases. Instead, create a 
 
 ---
 
-### 4. Step 3: Installing PHP and Extensions (Any Version 5.6 - 8.4)
+### 5. Step 3: Installing PHP and Extensions (Any Version 5.6 - 8.4)
 To support multiple PHP versions, add the Ondřej Surý PPA repository. This repository provides pre-compiled packages for older and newer PHP versions on Ubuntu.
+
+> [!IMPORTANT]
+> **Web Server Integrations:**
+> - **Apache** can use the built-in PHP module (`libapache2-mod-php<version>`), which runs PHP within the Apache process.
+> - **Nginx** cannot use Apache modules. It **must** forward requests to **PHP-FPM** (FastCGI Process Manager) using Unix/TCP sockets. 
+> - The installation commands below install *both* options (`libapache2-mod-php<version>` and `php<version>-fpm`) to support both servers out-of-the-box.
 
 #### 4.1 Install Prerequisites & Add Repository
 ```bash
@@ -246,10 +378,33 @@ export PHP_VERSION="8.3"
 sudo apt install -y php${PHP_VERSION} php${PHP_VERSION}-cli php${PHP_VERSION}-common php${PHP_VERSION}-fpm php${PHP_VERSION}-mysql php${PHP_VERSION}-sqlite3 php${PHP_VERSION}-pgsql php${PHP_VERSION}-mbstring php${PHP_VERSION}-xml php${PHP_VERSION}-curl php${PHP_VERSION}-zip php${PHP_VERSION}-gd php${PHP_VERSION}-gmp php${PHP_VERSION}-bcmath php${PHP_VERSION}-soap php${PHP_VERSION}-intl php${PHP_VERSION}-readline php${PHP_VERSION}-opcache php${PHP_VERSION}-redis php${PHP_VERSION}-imagick php${PHP_VERSION}-xdebug libapache2-mod-php${PHP_VERSION}
 ```
 
+#### 4.5 Managing PHP-FPM Service (Required for Nginx)
+When using Nginx with PHP-FPM, you must manage the PHP-FPM daemon directly. Replace `<version>` with your active PHP version (e.g., `8.3`):
+* **Check FPM status**:
+  ```bash
+  sudo systemctl status php<version>-fpm
+  ```
+* **Start FPM**:
+  ```bash
+  sudo systemctl start php<version>-fpm
+  ```
+* **Stop FPM**:
+  ```bash
+  sudo systemctl stop php<version>-fpm
+  ```
+* **Restart FPM** (reloads configurations and processes):
+  ```bash
+  sudo systemctl restart php<version>-fpm
+  ```
+* **Enable FPM to start on system boot**:
+  ```bash
+  sudo systemctl enable php<version>-fpm
+  ```
+
 ---
 
-### 5. Step 4: Managing and Switching PHP Versions
-If both PHP versions are installed, you must manage which version is active for CLI commands and which is active in Apache.
+### 6. Step 4: Managing and Switching PHP Versions
+If multiple PHP versions are installed, you must manage which version is active for CLI commands, Apache, and Nginx.
 
 #### 5.1 Switch PHP CLI (Command Line Interface)
 Set the default CLI version using `update-alternatives`:
@@ -294,9 +449,62 @@ To change the version Apache uses, you must disable the active module and enable
    sudo systemctl restart apache2
    ```
 
+#### 5.3 Switch PHP for Nginx Web Server (via PHP-FPM)
+Because Nginx proxies requests to PHP-FPM via socket configuration files, you switch versions by updating the `fastcgi_pass` socket path inside your active Nginx server blocks.
+
+##### Switch from PHP 7.4 to PHP 8.3:
+1. Open your Nginx server block configuration (e.g., the default config):
+   ```bash
+   sudo nano /etc/nginx/sites-available/default
+   ```
+2. Find the PHP location block and locate the `fastcgi_pass` directive:
+   ```nginx
+   fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+   ```
+   Modify it to point to the `php8.3-fpm` socket:
+   ```nginx
+   fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+   ```
+3. Save the file and exit.
+4. Verify the Nginx syntax:
+   ```bash
+   sudo nginx -t
+   ```
+5. Ensure the PHP 8.3-FPM service is running:
+   ```bash
+   sudo systemctl start php8.3-fpm
+   ```
+6. Reload Nginx to apply the change:
+   ```bash
+   sudo systemctl reload nginx
+   ```
+
+##### Switch from PHP 8.3 to PHP 7.4:
+1. Edit the active server block:
+   ```bash
+   sudo nano /etc/nginx/sites-available/default
+   ```
+2. Change the socket path in `fastcgi_pass`:
+   ```nginx
+   # Change from php8.3-fpm.sock to php7.4-fpm.sock
+   fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+   ```
+3. Verify syntax:
+   ```bash
+   sudo nginx -t
+   ```
+4. Ensure the PHP 7.4-FPM service is running:
+   ```bash
+   sudo systemctl start php7.4-fpm
+   ```
+5. Reload Nginx:
+   ```bash
+   sudo systemctl reload nginx
+   ```
+
 ---
 
-### 6. Step 5: Installing Composer (PHP Dependency Manager)
+### 7. Step 5: Installing Composer (PHP Dependency Manager)
 Composer is the standard dependency manager for PHP, used to install and manage external libraries in your projects. Here is how to download, verify, install, and configure Composer globally.
 
 #### 5.1 Prerequisites for Composer
@@ -352,7 +560,7 @@ composer --version
 
 ---
 
-### 7. Step 6: Installing Node.js and NPM
+### 8. Step 6: Installing Node.js and NPM
 To install Node.js and its package manager (NPM) on Ubuntu, you can choose between two primary methods: using the **NodeSource PPA** (ideal for production environments requiring a specific stable version) or using **NVM (Node Version Manager)** (ideal for development environments where you need to switch between multiple versions).
 
 #### 6.1 Option 1: Install Node.js via NodeSource PPA (Recommended for Servers)
@@ -427,16 +635,33 @@ Once Node.js is installed, you can globally install other popular package manage
 
 ---
 
-### 8. Step 7: Verifying the Installation
+### 9. Step 7: Verifying the Installation
 
-#### 7.1 Verify Web Server and PHP Integration
-1. Create a PHP file in Apache's default web directory (`/var/www/html/`):
+#### 7.1 Verify Web Server and PHP Integration (Apache or Nginx)
+Both web servers typically use `/var/www/html` as the default document root.
+
+> [!WARNING]
+> **Port Conflicts:** Apache and Nginx default to port `80`. You cannot run both simultaneously on the same port.
+> - To check Nginx while disabling Apache:
+>   ```bash
+>   sudo systemctl stop apache2
+>   sudo systemctl start nginx
+>   ```
+> - To check Apache while disabling Nginx:
+>   ```bash
+>   sudo systemctl stop nginx
+>   sudo systemctl start apache2
+>   ```
+
+1. Create a PHP file in the default web directory (`/var/www/html/`):
    ```bash
-   sudo echo "<?php phpinfo(); ?>" | sudo tee /var/www/html/info.php
+   echo "<?php phpinfo(); ?>" | sudo tee /var/www/html/info.php
    ```
 2. Open your web browser and navigate to `http://your_server_ip/info.php` or `http://localhost/info.php`.
-3. You should see a detailed configuration page detailing the active PHP version.
-4. **IMPORTANT SECURITY STEP**: Leaving `info.php` public poses a security risk because it displays details about your server's configuration to anyone. Delete it after testing:
+3. You should see the standard detailed PHP configuration page showing the active PHP version.
+   - For Apache, check that **Server API** shows `Apache 2.0 Handler` (or similar).
+   - For Nginx, check that **Server API** shows `FPM/FastCGI`.
+4. **IMPORTANT SECURITY STEP**: Delete `info.php` after testing, as exposing server details is a high security risk:
    ```bash
    sudo rm /var/www/html/info.php
    ```
@@ -496,18 +721,25 @@ Verify that Node.js can execute Javascript and fetch packages:
 
 ---
 
-### 9. Step 8: File Permissions & Directory Structure
+### 10. Step 8: File Permissions & Directory Structure
 For security and convenience, manage owner permissions inside the `/var/www/html` folder.
 
 #### 8.1 Key Paths & Directories
 * **Web Document Root**: `/var/www/html/`
 * **Apache Configuration Root**: `/etc/apache2/`
 * **Apache Virtual Hosts Configuration**: `/etc/apache2/sites-available/`
+* **Nginx Configuration Root**: `/etc/nginx/`
+* **Nginx Virtual Hosts Configuration**: `/etc/nginx/sites-available/`
 * **PHP Configuration (`php.ini`)**:
-  - PHP 7.4 (Apache): `/etc/php/7.4/apache2/php.ini`
+  - PHP 7.4 (Apache Module): `/etc/php/7.4/apache2/php.ini`
+  - PHP 7.4 (PHP-FPM for Nginx): `/etc/php/7.4/fpm/php.ini`
   - PHP 7.4 (CLI): `/etc/php/7.4/cli/php.ini`
-  - PHP 8.3 (Apache): `/etc/php/8.3/apache2/php.ini`
+  - PHP 8.3 (Apache Module): `/etc/php/8.3/apache2/php.ini`
+  - PHP 8.3 (PHP-FPM for Nginx): `/etc/php/8.3/fpm/php.ini`
   - PHP 8.3 (CLI): `/etc/php/8.3/cli/php.ini`
+* **PHP-FPM Pool Configurations** (defines listening socket, user, group):
+  - PHP 7.4 FPM Pool: `/etc/php/7.4/fpm/pool.d/www.conf`
+  - PHP 8.3 FPM Pool: `/etc/php/8.3/fpm/pool.d/www.conf`
 
 #### 8.2 Directory Permissions
 By default, files inside `/var/www/html` are owned by `root`. Give your current user ownership of this folder so you can edit files without using `sudo`:
@@ -545,27 +777,62 @@ This is the most modern and secure method. If you are developing a web applicati
 
 ---
 
-### 10. Step 9: Troubleshooting & Log Locations
+### 11. Step 9: Troubleshooting & Log Locations
 If you encounter issues, logs are the first place to check.
 
-#### 9.1 Log Locations
+#### 11.1 Log Locations
 * **Apache Access Log**: `/var/log/apache2/access.log`
 * **Apache Error Log**: `/var/log/apache2/error.log`
+* **Nginx Access Log**: `/var/log/nginx/access.log`
+* **Nginx Error Log**: `/var/log/nginx/error.log`
 * **MySQL Error Log**: `/var/log/mysql/error.log`
+* **PHP-FPM Log**: `/var/log/php8.3-fpm.log` (or `php7.4-fpm.log` depending on active version)
 
-#### 9.2 Common Issues
-1. **Port 80/443 already in use**:
-   - Check if another service (like Nginx) is running: `sudo systemctl status nginx` or `sudo lsof -i :80`.
+#### 11.2 Common Issues
+1. **Port 80/443 already in use / `bind() to 0.0.0.0:80 failed (98: Address already in use)`**:
+   - **Cause**: Apache and Nginx are both attempting to listen on port 80.
+   - **Solution**: Stop the competing web server. To stop Apache: `sudo systemctl stop apache2` (and disable it: `sudo systemctl disable apache2`). To stop Nginx: `sudo systemctl stop nginx` (and disable it: `sudo systemctl disable nginx`). Check active usage with `sudo lsof -i :80`.
 2. **PHP code displays as plain text**:
-   - The PHP Apache module might not be enabled. Run `sudo a2enmod php8.3` (or `php7.4`) and restart Apache: `sudo systemctl restart apache2`.
-3. **Database connection refused**:
+   - **For Apache**: The PHP Apache module might not be enabled. Run `sudo a2enmod php8.3` (or the corresponding version) and restart Apache: `sudo systemctl restart apache2`.
+   - **For Nginx**: Ensure your server block includes a handler for PHP files redirecting to the PHP-FPM socket, and that the PHP-FPM socket path is correct.
+3. **502 Bad Gateway (Nginx)**:
+   - **Cause**: Nginx is running, but it cannot communicate with the PHP-FPM process. This happens if PHP-FPM is not running, or if the socket configuration path in Nginx is incorrect.
+   - **Solution**:
+     1. Verify the PHP-FPM status: `sudo systemctl status php8.3-fpm` (replace with your PHP version). Start it if stopped: `sudo systemctl start php8.3-fpm`.
+     2. Verify the socket exists at `/var/run/php/php8.3-fpm.sock`.
+     3. Ensure the `fastcgi_pass` path in `/etc/nginx/sites-available/default` matches this socket path exactly.
+4. **403 Forbidden (Nginx)**:
+   - **Cause**: Nginx does not have read permissions for the requested files, or the index file (e.g. `index.php`) is missing, or not specified in your server block's `index` directive.
+   - **Solution**:
+     1. Ensure index.php is added: `index index.php index.html index.htm;`.
+     2. Fix directory ownership: `sudo chown -R $USER:www-data /var/www/html`.
+     3. Fix permissions: `sudo chmod -R 755 /var/www/html`.
+5. **404 Not Found on Framework URLs / Routing issues (Nginx)**:
+   - **Cause**: Framework routing (like Laravel, Symfony, or Single Page Apps) is virtual, but Nginx is attempting to look up the directory on disk.
+   - **Solution**: Ensure your server block's `location /` directive utilizes `try_files`:
+     ```nginx
+     location / {
+         try_files $uri $uri/ /index.php?$query_string;
+     }
+     ```
+6. **"No input file specified" / "Primary script unknown" (Nginx + PHP-FPM)**:
+   - **Cause**: Nginx successfully talked to PHP-FPM, but PHP-FPM could not find or read the specified PHP file. This is usually caused by an incorrect `SCRIPT_FILENAME` parameter or a root directory permission issue.
+   - **Solution**:
+     1. In your Nginx config PHP block, ensure you have:
+        ```nginx
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        ```
+        *(Or `$document_root$fastcgi_script_name`)*
+     2. Double-check that your server block `root` path is correct.
+     3. Ensure the `www-data` group has read access to the directory: `sudo chown -R $USER:www-data /var/www/html`.
+7. **Database connection refused**:
    - Verify that the MySQL service is running: `sudo systemctl status mysql`.
    - Double check database credentials and hostname in your application.
-4. **Node.js global installation permission errors (EACCES)**:
+8. **Node.js global installation permission errors (EACCES)**:
    - When using the NodeSource installation, running `npm install -g <package>` can fail with permission errors. You can resolve this by using `sudo npm install -g <package>`, or by using NVM (Option 2) which handles environments in user space and avoids `sudo` entirely.
-5. **Node.js Port already in use (EADDRINUSE)**:
+9. **Node.js Port already in use (EADDRINUSE)**:
    - If you see `Error: listen EADDRINUSE: address already in use :::3000`, check which process is holding the port: `sudo lsof -i :3000`. Stop the process, or select a different port for your server.
-6. <a id="mysql-access-denied"></a>**Access denied for user 'root'@'localhost' (MySQL Error)**:
+10. <a id="mysql-access-denied"></a>**Access denied for user 'root'@'localhost' (MySQL Error)**:
    - **Cause**: By default on Ubuntu, the MySQL `root` user is configured to authenticate using the `auth_socket` plugin. This means that you can only log in if you run the command with administrator privileges (`sudo`). Connecting as `root` from an application (e.g., PHP, Node.js) or running `mysql -u root -p` without `sudo` will fail with this error.
    - **Solution 1 (Recommended)**: Create and use a dedicated non-root application user. Refer back to [Section 2.3: Creating a Dedicated Application Database & User](#23-creating-a-dedicated-application-database--user).
    - **Solution 2 (Run MySQL CLI as Root)**: If you just need to access the MySQL shell, execute it using `sudo`:
