@@ -1,0 +1,85 @@
+server {
+    listen 80;
+    server_name 172.127.100.100;
+
+    root /var/www/html/public;
+    index index.php index.html;
+
+    # -----------------------------
+    # TIMEOUTS (1 HOUR)
+    # -----------------------------
+    client_body_timeout 3600s;
+    client_header_timeout 3600s;
+    send_timeout 3600s;
+
+    fastcgi_connect_timeout 3600s;
+    fastcgi_send_timeout 3600s;
+    fastcgi_read_timeout 3600s;
+
+    keepalive_timeout 3600s;
+
+    # -----------------------------
+    # SECURITY HEADERS
+    # -----------------------------
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-Content-Type-Options nosniff always;
+
+    # -----------------------------
+    # CORS (GLOBAL SAFE)
+    # -----------------------------
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Authorization, Content-Type, Range" always;
+    add_header Access-Control-Expose-Headers "Content-Length, Content-Range" always;
+
+    # -----------------------------
+    # MAIN LARAVEL ROUTING
+    # -----------------------------
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # -----------------------------
+    # STATIC FILES (CSS / JS / IMG)
+    # -----------------------------
+    location ~* \.(css|js|jpg|jpeg|png|gif|ico|svg|webp)$ {
+        expires 30d;
+        access_log off;
+        add_header Cache-Control "public";
+    }
+
+    # -----------------------------
+    # FONTS
+    # -----------------------------
+    location ~* \.(woff|woff2|ttf|eot|otf)$ {
+        expires 365d;
+        access_log off;
+        add_header Cache-Control "public";
+    }
+
+    # -----------------------------
+    # VIDEO STREAMING (ALL)
+    # -----------------------------
+    location ~* \.(mp4|mkv|avi|webm|ogv|mov|flv|wmv|m4v)$ {
+        add_header Accept-Ranges bytes;
+        expires 30d;
+        access_log off;
+    }
+
+    # -----------------------------
+    # PHP 8.3
+    # -----------------------------
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # -----------------------------
+    # SECURITY
+    # -----------------------------
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
